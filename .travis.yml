@@ -1,0 +1,18 @@
+language: go
+go:
+  - "1.10"
+
+install: ./scripts/install_tools.sh
+
+jobs:
+  include:
+  - stage: tests
+    script: ./scripts/unit.sh
+    name: "Unit tests"
+  - stage: deploy
+    script: ./scripts/deploy-to-github.sh
+    name: "Deploy pre-release to GitHub"
+
+stages:
+  - name: deploy
+    if: branch = master
