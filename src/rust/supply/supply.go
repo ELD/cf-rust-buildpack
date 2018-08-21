@@ -3,11 +3,12 @@ package supply
 import (
 	"io"
 
-	"github.com/cloudfoundry/libbuildpack"
-	"path/filepath"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+
+	"github.com/cloudfoundry/libbuildpack"
 )
 
 type Stager interface {
@@ -95,13 +96,13 @@ func (s *Supplier) DetectCompilerVersion() (string, error) {
 
 	toolchainVersion := ""
 	if exists {
-	 	bytes, err := ioutil.ReadFile("rustup-toolchain")
+		bytes, err := ioutil.ReadFile("rustup-toolchain")
 
-	 	if err != nil {
-	 		return "", fmt.Errorf("Unable to read from 'rustup-toolchain' file: %v", err)
+		if err != nil {
+			return "", fmt.Errorf("Unable to read from 'rustup-toolchain' file: %v", err)
 		}
 
-	 	toolchainVersion = "--default-toolchain " + string(bytes)
+		toolchainVersion = "--default-toolchain " + string(bytes)
 	}
 
 	return toolchainVersion, nil
