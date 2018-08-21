@@ -1,19 +1,20 @@
 language: go
 go:
-  - "1.10"
-
-install: ./scripts/install_tools.sh
-
+- '1.10'
+install: "./scripts/install_tools.sh"
 jobs:
   include:
   - stage: tests
-    script: ./scripts/unit.sh
-    name: "Unit tests"
-  - stage: deploy
-    script: ./scripts/deploy-to-github.sh
-    name: "Deploy pre-release to GitHub"
-
+    script: "./scripts/unit.sh"
+    name: Unit tests
 stages:
-  - name: tests
-  - name: deploy
-    if: branch = master
+- name: tests
+before_deploy: ./.bin/buildpack-packager build -stack cfslinux2
+deploy:
+  provider: releases
+  api_key:
+    secure: ML6l+d7FcPyrrqLX20o0+tvq5Cb+N2C7gtCpEEI7KSdR0jzo6qNS3s1c575xsaCMqFxdj9NmtF0ymx3A5UkiJZ6YxfakSnBmQKewDwJvNbhhXmXAi890mJSF0KA+9TPR+84B+aEprKnPFHUW959TyqlhnMvzOE6Vw2qxF0zub1rMw7/8gaGJiQr72JnC3ciEtt5a5vn/F2tPKQBeuiR9UIfrN5NW5wCG5tjhqnQ4svvJuPc7KPD7thxCBZ1zlHjmITjTqO4HwmlhwsBMqs7Wq93MPzNdjXWFz2wSxeGjd27csG1adCfvpx8Pt0M4fiIt7WEmgD88TMjf3IYnnqqj04uaVazOBVQ62Rb6WyoIe1VRfQWyeAKHaVIv+D6aOAV58ZscZtzW8xFm7Ep6bjxRaBJ/EEdwB5bjU0crofZUND/mUcNGsYLyLhQpgQKqBysbvD6WihLEbMxzIMG9MZaw9u/3XrRdJo8srQ+DQzuZRr888iOwfblJ4qOQR7/DXcN/KVKCeFdsDUMNOtikRSKQVZN8oORbJ2vHs35I0mIhUBt68WPqABetrAjvWk4HkPiY531iO2Y6vuyWCK1QlJ1Jc+ClhpEYJfMzmqlfi8o+75JsWVoE+emI7ONZE91vwsC6cRUdri374U6aVTfCc16bxhzPm4OA4RH7fMWRL3f374o=
+  file: rust_buildpack*.zip
+  on:
+    tags: true
+  prerelease: true
