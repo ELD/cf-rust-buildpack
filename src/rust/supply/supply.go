@@ -4,6 +4,10 @@ import (
 	"io"
 
 	"github.com/cloudfoundry/libbuildpack"
+	"path/filepath"
+	"fmt"
+	"io/ioutil"
+	"os"
 )
 
 type Stager interface {
@@ -33,17 +37,72 @@ type Command interface {
 }
 
 type Supplier struct {
-	Manifest  Manifest
-	Installer Installer
-	Stager    Stager
-	Command   Command
-	Log       *libbuildpack.Logger
+	Manifest              Manifest
+	Installer             Installer
+	Stager                Stager
+	Command               Command
+	Log                   *libbuildpack.Logger
+	appHasCargoTomlExists bool
+	appHasCargoLockExists bool
 }
 
 func (s *Supplier) Run() error {
-	s.Log.BeginStep("Supplying rust")
+	s.Log.BeginStep("Supplying Rust")
 
-	// TODO: Install any dependencies here...
+	if err := s.Setup(); err != nil {
+		return fmt.Errorf("Error during setup: %v", err)
+	}
+
+	version, err := s.DetectCompilerVersion()
+	if err != nil {
+		return fmt.Errorf("Unable ")
+	}
+
+	s.Command.Execute(
+		s.Stager.BuildDir(),
+		os.Stdout,
+		os.Stdout,
+		"curl",
+		"https://sh.rustup.rs -sSf",
+		"|",
+		"sh",
+		"--",
+		"-y",
+		version)
 
 	return nil
+}
+
+func (s *Supplier) Setup() error {
+	// Detect Cargo.toml and Cargo.lock
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Cargo.toml")); err != nil {
+		return fmt.Errorf("Unable to determine if Cargo.toml exists: %v", err)
+	} else {
+		s.appHasCargoTomlExists = exists
+	}
+
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Cargo.lock")); err != nil {
+		return fmt.Errorf("Unable to determine if Cargo.lock exists: %v", err)
+	} else {
+		s.appHasCargoLockExists = exists
+	}
+
+	return nil
+}
+
+func (s *Supplier) DetectCompilerVersion() (string, error) {
+	exists, _ := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "rustup-toolchain"))
+
+	toolchainVersion := ""
+	if exists {
+	 	bytes, err := ioutil.ReadFile("rustup-toolchain")
+
+	 	if err != nil {
+	 		return "", fmt.Errorf("Unable to read from 'rustup-toolchain' file: %v", err)
+		}
+
+	 	toolchainVersion = "--default-toolchain " + string(bytes)
+	}
+
+	return toolchainVersion, nil
 }

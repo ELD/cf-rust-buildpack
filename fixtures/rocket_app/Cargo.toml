@@ -1,0 +1,8 @@
+[package]
+name = "rocket_app"
+version = "0.1.0"
+authors = ["Eric Dattore <eric@dattore.me>"]
+
+[dependencies]
+rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "v0.4-preview" }
+rocket_codegen = { git = "https://github.com/SergioBenitez/Rocket", branch = "v0.4-preview" }
