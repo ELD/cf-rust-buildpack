@@ -1,14 +1,14 @@
 package supply
 
 import (
-	"io"
-
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry/libbuildpack"
+	"strings"
 )
 
 type Stager interface {
@@ -37,12 +37,18 @@ type Command interface {
 	Output(dir string, program string, args ...string) (string, error)
 }
 
+type CommandExt interface {
+	ExecuteWithPipe(string, io.Writer, io.Writer, string, string) error
+}
+
 type Supplier struct {
 	Manifest              Manifest
 	Installer             Installer
 	Stager                Stager
 	Command               Command
+	CommandExt            CommandExt
 	Log                   *libbuildpack.Logger
+	ToolchainVersion      string
 	appHasCargoTomlExists bool
 	appHasCargoLockExists bool
 }
@@ -51,25 +57,24 @@ func (s *Supplier) Run() error {
 	s.Log.BeginStep("Supplying Rust")
 
 	if err := s.Setup(); err != nil {
-		return fmt.Errorf("Error during setup: %v", err)
+		return fmt.Errorf("error during setup: %v", err)
 	}
 
-	version, err := s.DetectCompilerVersion()
-	if err != nil {
-		return fmt.Errorf("Unable ")
+	if err := s.DetectCompilerVersion(); err != nil {
+		return fmt.Errorf("error during detecting compiler version: %v", err)
 	}
 
-	s.Command.Execute(
-		s.Stager.BuildDir(),
-		os.Stdout,
-		os.Stdout,
-		"curl",
-		"https://sh.rustup.rs -sSf",
-		"|",
-		"sh",
-		"--",
-		"-y",
-		version)
+	if err := s.InstallCompiler(); err != nil {
+		return fmt.Errorf("error during compiler installation: %v", err)
+	}
+
+	if err := s.CompileApp(); err != nil {
+		return fmt.Errorf("error during compilation: %v", err)
+	}
+
+	if err := s.WriteProfileD(); err != nil {
+		return fmt.Errorf("error while writing .profile.d: %v", err)
+	}
 
 	return nil
 }
@@ -77,13 +82,13 @@ func (s *Supplier) Run() error {
 func (s *Supplier) Setup() error {
 	// Detect Cargo.toml and Cargo.lock
 	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Cargo.toml")); err != nil {
-		return fmt.Errorf("Unable to determine if Cargo.toml exists: %v", err)
+		return fmt.Errorf("unable to determine if Cargo.toml exists: %v", err)
 	} else {
 		s.appHasCargoTomlExists = exists
 	}
 
 	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Cargo.lock")); err != nil {
-		return fmt.Errorf("Unable to determine if Cargo.lock exists: %v", err)
+		return fmt.Errorf("unable to determine if Cargo.lock exists: %v", err)
 	} else {
 		s.appHasCargoLockExists = exists
 	}
@@ -91,19 +96,32 @@ func (s *Supplier) Setup() error {
 	return nil
 }
 
-func (s *Supplier) DetectCompilerVersion() (string, error) {
-	exists, _ := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "rustup-toolchain"))
+func (s *Supplier) DetectCompilerVersion() error {
+	exists, _ := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "rust-toolchain"))
 
-	toolchainVersion := ""
+	s.ToolchainVersion = ""
 	if exists {
-		bytes, err := ioutil.ReadFile("rustup-toolchain")
+		bytes, err := ioutil.ReadFile(filepath.Join(s.Stager.BuildDir(), "rust-toolchain"))
 
 		if err != nil {
-			return "", fmt.Errorf("Unable to read from 'rustup-toolchain' file: %v", err)
+			return fmt.Errorf("unable to read from 'rust-toolchain' file: %v", err)
 		}
 
-		toolchainVersion = "--default-toolchain " + string(bytes)
+		s.ToolchainVersion = " --default-toolchain " + strings.TrimSpace(string(bytes))
 	}
 
-	return toolchainVersion, nil
+	return nil
+}
+
+// TODO: Add a caching option and leverage libbuildpack's ability to install the dep for you
+func (s *Supplier) InstallCompiler() error {
+	installArguments := fmt.Sprintf("sh -s -- -y%s", s.ToolchainVersion)
+	err := s.CommandExt.ExecuteWithPipe(
+		s.Stager.BuildDir(),
+		os.Stdout,
+		os.Stdout,
+		"curl https://sh.rustup.rs -sSf",
+		installArguments)
+
+	return err
 }

@@ -1,7 +1,8 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
+extern crate rocket;
+
+#[get("/")]
+fn index() -> &'static str {
+    "Hello, Rocket, from Cloud Foundry!"
 }

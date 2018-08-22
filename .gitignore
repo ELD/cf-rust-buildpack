@@ -1,3 +1,5 @@
+.idea/
 pkg
 .bin
 rust_buildpack-*.zip
+fixtures/**/target

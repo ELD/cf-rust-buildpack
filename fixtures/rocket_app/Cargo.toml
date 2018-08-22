@@ -3,6 +3,14 @@ name = "rocket_app"
 version = "0.1.0"
 authors = ["Eric Dattore <eric@dattore.me>"]
 
+[lib]
+name = "librocketapp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rocketapp"
+path = "src/bin/main.rs"
+
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "v0.4-preview" }
-rocket_codegen = { git = "https://github.com/SergioBenitez/Rocket", branch = "v0.4-preview" }
+rocket = "0.3"
+rocket_codegen = "0.3"
